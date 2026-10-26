@@ -36,8 +36,28 @@
     'conditions' : [
       [
         'OS=="linux"', {
+          # The compiled add-on needs ANGLE, the graphics library, to run. We
+          # copy ANGLE's files into the same folder as the add-on and tell the
+          # add-on to look in its own folder for them ($ORIGIN). That way the
+          # add-on keeps working when the whole package is moved somewhere
+          # else, as happens when it's installed on the Pi.
+          #
+          # We also copy SwiftShader, a backup renderer that draws using the
+          # main processor when there's no graphics chip to use. ANGLE only
+          # finds it if it sits next to ANGLE's own files.
+          'copies' : [{
+            'destination' : '<(PRODUCT_DIR)',
+            'files' : [
+              '<(angle_lib_dir)/libEGL.so',
+              '<(angle_lib_dir)/libGLESv2.so',
+              '<(angle_lib_dir)/libvk_swiftshader.so',
+              '<(angle_lib_dir)/vk_swiftshader_icd.json',
+            ],
+          }],
+          'ldflags' : [
+            "-Wl,-rpath,'$$ORIGIN'",
+          ],
           'libraries' : [
-            '-Wl,-rpath,<@(angle_lib_dir)',
             '-lGLESv2',
             '-lEGL',
           ],
