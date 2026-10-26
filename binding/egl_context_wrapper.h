@@ -53,8 +53,15 @@ class GLExtensionsWrapper {
   GLExtensionsWrapper(const char* extensions_str)
       : extensions_(extensions_str ? extensions_str : "") {}
 
+  // The list of extensions (optional graphics features) arrives as one long
+  // line of text, with the names separated by spaces. To answer "is this
+  // feature in the list?", we look for the whole name standing on its own.
+  // Looking for the text anywhere in the line gives wrong answers, because
+  // one name can be the start of another: "GL_OES_texture_float" is the start
+  // of "GL_OES_texture_float_linear", which is a different feature.
   bool HasExtension(const char* name) {
-    return extensions_.find(name) != std::string::npos;
+    const std::string padded = " " + extensions_ + " ";
+    return padded.find(std::string(" ") + name + " ") != std::string::npos;
   }
 
   const char* GetExtensions() { return extensions_.c_str(); }

@@ -317,10 +317,19 @@ bool EGLContextWrapper::InitEGL(napi_env env,
     context_attributes.push_back(EGL_TRUE);
   }
 
-  // TODO(kreeger): This is only needed to avoid validation.
-  // This is needed for OES_TEXTURE_HALF_FLOAT textures uploading as FLOAT
-  context_attributes.push_back(EGL_CONTEXT_OPENGL_NO_ERROR_KHR);
-  context_attributes.push_back(EGL_TRUE);
+  // ANGLE is the graphics library that does the actual drawing. It can check
+  // every drawing command and flag the ones that are used wrongly, much as a
+  // spell checker flags typos. By default we switch that checking off,
+  // because one older feature (loading a certain kind of texture) only works
+  // without it.
+  //
+  // When the caller asks for a context that behaves like a web browser, we
+  // leave the checking on. A browser always checks, and programs written for
+  // browsers expect to be told when they make a mistake.
+  if (!context_options.webgl_compatibility) {
+    context_attributes.push_back(EGL_CONTEXT_OPENGL_NO_ERROR_KHR);
+    context_attributes.push_back(EGL_TRUE);
+  }
 
   context_attributes.push_back(EGL_NONE);
 

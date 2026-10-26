@@ -1999,6 +1999,51 @@ void main() {
   assertNoError(gl, "integer vertex attributes");
 }
 
+// When a context is set up to behave like a web browser, a drawing mistake
+// must be reported back, just as a browser would report it. Loading
+// half-precision textures must still work in that mode too.
+function testWebGLCompatibilityReportsErrors() {
+  const gl = createContext({webGLCompatibility: true});
+  try {
+    gl.getError();
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+    assert.strictEqual(
+        gl.getError(), gl.INVALID_OPERATION,
+        "binding a 2D texture to the cube-map target");
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(
+        gl.TEXTURE_2D, 0, gl.RGBA16F, 1, 1, 0, gl.RGBA, gl.HALF_FLOAT,
+        new Uint16Array([0x3c00, 0, 0, 0x3c00]));
+    assertNoError(gl, "half-float upload in a WebGL-compatibility context");
+    gl.deleteTexture(texture);
+  } finally {
+    gl.destroy();
+  }
+}
+
+// Switching on any optional feature the context says it has must never
+// produce an error. If it does, this library is asking the graphics library
+// for a feature it doesn't really have.
+function testWebGLCompatibilityExtensionsEnableCleanly() {
+  for (const majorVersion of [2, 3]) {
+    const gl = createContext({webGLCompatibility: true, majorVersion});
+    try {
+      gl.getError();
+      for (const name of gl.getSupportedExtensions()) {
+        assert.notStrictEqual(
+            gl.getExtension(name), null, `ES ${majorVersion}: ${name}`);
+        assertNoError(
+            gl, `ES ${majorVersion}: getExtension("${name}") in a ` +
+                "WebGL-compatibility context");
+      }
+    } finally {
+      gl.destroy();
+    }
+  }
+}
+
 function testDestroyApi() {
   const gl = createContext();
   assert.strictEqual(typeof gl.destroy, "function");
@@ -3487,6 +3532,8 @@ testVertexArrayState(gl);
 testInstancedDrawing(gl, false);
 testInstancedDrawing(gl, true);
 testWebGL2PixelStoreIsGatedForES2();
+testWebGLCompatibilityReportsErrors();
+testWebGLCompatibilityExtensionsEnableCleanly();
 testDestroyApi();
 testLoseContextApi();
 testSequentialContextCleanup();
