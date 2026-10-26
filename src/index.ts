@@ -18,6 +18,7 @@
 // tslint:disable-next-line:no-require-imports
 import bindings = require('bindings');
 import {NodeJsGlBinding} from './binding';
+import {useWebGLObjects} from './objects';
 
 const binding = bindings('nodejs_gl_binding') as NodeJsGlBinding;
 
@@ -43,7 +44,9 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
     const minorVersion =  args.minorVersion || 0;
     const enabledExtensions = args.enabledExtensions;
     const disabledExtensions = args.disabledExtensions;
-    return binding.createWebGLRenderingContext(
+    // The native context names textures, buffers and the rest by number; useWebGLObjects
+    // makes it hand out and accept objects instead, as a browser's context does.
+    return useWebGLObjects(binding.createWebGLRenderingContext(
         width,
         height,
         majorVersion,
@@ -51,10 +54,15 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
         webGLCompatibility,
         enabledExtensions,
         disabledExtensions,
-    );
+    ));
 
 
 } 
 
 
 export { createWebGLRenderingContext };
+export {
+    WebGLBuffer, WebGLFramebuffer, WebGLObjectHandle, WebGLProgram, WebGLQuery,
+    WebGLRenderbuffer, WebGLSampler, WebGLShader, WebGLTexture, WebGLTransformFeedback,
+    WebGLVertexArrayObject,
+} from './objects';
