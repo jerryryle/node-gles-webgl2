@@ -18,6 +18,7 @@
 // tslint:disable-next-line:no-require-imports
 import bindings = require('bindings');
 import {NodeJsGlBinding} from './binding';
+import {useBufferOffsets} from './buffers';
 import {useWebGLObjects} from './objects';
 
 const binding = bindings('nodejs_gl_binding') as NodeJsGlBinding;
@@ -44,9 +45,9 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
     const minorVersion =  args.minorVersion || 0;
     const enabledExtensions = args.enabledExtensions;
     const disabledExtensions = args.disabledExtensions;
-    // The native context names textures, buffers and the rest by number; useWebGLObjects
-    // makes it hand out and accept objects instead, as a browser's context does.
-    return useWebGLObjects(binding.createWebGLRenderingContext(
+    // The native context differs from a browser's in a few ways. Each wrapper below makes one
+    // of them behave as a browser's does, and its module's opening comment says which.
+    const gl = binding.createWebGLRenderingContext(
         width,
         height,
         majorVersion,
@@ -54,7 +55,10 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
         webGLCompatibility,
         enabledExtensions,
         disabledExtensions,
-    ));
+    );
+    useWebGLObjects(gl);
+    useBufferOffsets(gl);
+    return gl;
 
 
 } 

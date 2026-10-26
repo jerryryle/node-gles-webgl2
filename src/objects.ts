@@ -29,6 +29,8 @@
 // where OpenGL reports 0, meaning "nothing". A bare number still passes through unchanged, so
 // code written against the numbers keeps working.
 
+import {replace} from './wrap';
+
 // tslint:disable:no-any
 
 /** What every wrapped object shares: the number OpenGL names it by. */
@@ -157,18 +159,6 @@ function unwrapAll(args: IArguments): any[] {
   return out;
 }
 
-/** Replace `name` on `target` with `make(original)`. The native context's methods cannot be
- *  assigned, so each replacement is defined as the object's own property. */
-function replace(target: any, name: string, make: (original: Function) => Function): void {
-  const original = target[name];
-  if (typeof original !== 'function') return;  // a method this context does not have
-  Object.defineProperty(target, name, {
-    value: make(original.bind(target)),
-    configurable: true,
-    writable: true,
-    enumerable: false,
-  });
-}
 
 /** Make `gl` hand out and accept browser-style WebGL objects. Returns `gl`. */
 export function useWebGLObjects<T>(gl: T): T {
