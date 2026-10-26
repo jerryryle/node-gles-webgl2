@@ -10652,23 +10652,33 @@ napi_value WebGLRenderingContext::TexSubImage2D(napi_env env,
   napi_value js_this;
   nstatus = napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-  if (argc < 9) {
-    NAPI_THROW_ERROR(env, "texSubImage2D expects 9 or 10 arguments");
-    return nullptr;
-  }
-
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[0], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[1], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[2], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[3], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[4], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[5], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[6], nullptr);
-  ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[7], nullptr);
 
   WebGLRenderingContext *context = nullptr;
   nstatus = UnwrapContext(env, js_this, &context);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+
+  // WebGL also has a short form, texSubImage2D(target, level, xoffset, yoffset,
+  // format, type, source), whose source is an image. The only images Node has
+  // are objects carrying width, height and data, such as ImageData, so that is
+  // what the short form takes, as texImage2D's six-argument form does. three.js
+  // uploads every image texture through it.
+  bool short_form = false;
+  if (argc < 9) {
+    napi_valuetype source_type = napi_undefined;
+    if (argc >= 7) {
+      nstatus = napi_typeof(env, args[6], &source_type);
+      ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    }
+    if (source_type != napi_object) {
+      NAPI_THROW_ERROR(env, "texSubImage2D expects 7, 9, or 10 arguments");
+      return nullptr;
+    }
+    short_form = true;
+  }
+  const size_t numeric_args = short_form ? 6 : 8;
+  for (size_t i = 0; i < numeric_args; ++i) {
+    ENSURE_VALUE_IS_NUMBER_RETVAL(env, args[i], nullptr);
+  }
 
   GLenum target;
   nstatus = napi_get_value_uint32(env, args[0], &target);
@@ -10687,20 +10697,39 @@ napi_value WebGLRenderingContext::TexSubImage2D(napi_env env,
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   GLsizei width;
-  nstatus = napi_get_value_int32(env, args[4], &width);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-
   GLsizei height;
-  nstatus = napi_get_value_int32(env, args[5], &height);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-
   GLenum format;
-  nstatus = napi_get_value_uint32(env, args[6], &format);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-
   GLenum type;
-  nstatus = napi_get_value_uint32(env, args[7], &type);
-  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+  napi_value source;
+  if (short_form) {
+    nstatus = napi_get_value_uint32(env, args[4], &format);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_uint32(env, args[5], &type);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    source = args[6];
+
+    napi_value width_value;
+    nstatus = napi_get_named_property(env, source, "width", &width_value);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_int32(env, width_value, &width);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+
+    napi_value height_value;
+    nstatus = napi_get_named_property(env, source, "height", &height_value);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_int32(env, height_value, &height);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+  } else {
+    nstatus = napi_get_value_int32(env, args[4], &width);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_int32(env, args[5], &height);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_uint32(env, args[6], &format);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = napi_get_value_uint32(env, args[7], &type);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    source = args[8];
+  }
 
   const void *data = nullptr;
   size_t source_byte_count = 0;
@@ -10708,9 +10737,25 @@ napi_value WebGLRenderingContext::TexSubImage2D(napi_env env,
   GLintptr pixel_unpack_offset = 0;
   ArrayLikeBuffer alb;
   napi_valuetype value_type;
-  nstatus = napi_typeof(env, args[8], &value_type);
+  nstatus = napi_typeof(env, source, &value_type);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
-  if (value_type == napi_number) {
+  if (short_form) {
+    bool has_data_property = false;
+    nstatus = napi_has_named_property(env, source, "data", &has_data_property);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    if (!has_data_property) {
+      NAPI_THROW_ERROR(env, "Image types must have a property named 'data'!");
+      return nullptr;
+    }
+    napi_value data_value;
+    nstatus = napi_get_named_property(env, source, "data", &data_value);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    nstatus = GetArrayLikeBuffer(env, data_value, &alb);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    data = alb.data;
+    source_byte_count = alb.length;
+    source_kind = TextureUploadSourceKind::kMemory;
+  } else if (value_type == napi_number) {
     size_t required_byte_count = 0;
     const PixelStoreState effective_pixel_store_state =
         GetEffectiveUnpackPixelStoreState(context->pixel_store_state_, false);
@@ -10725,7 +10770,7 @@ napi_value WebGLRenderingContext::TexSubImage2D(napi_env env,
     ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
     nstatus = GetPixelBufferOffsetPointer(
         env, context->eglContextWrapper_, GL_PIXEL_UNPACK_BUFFER,
-        GL_PIXEL_UNPACK_BUFFER_BINDING, args[8], "offset", required_byte_count,
+        GL_PIXEL_UNPACK_BUFFER_BINDING, source, "offset", required_byte_count,
         &data, &pixel_unpack_offset);
     ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
     source_kind = TextureUploadSourceKind::kPixelUnpackBuffer;
@@ -10737,7 +10782,7 @@ napi_value WebGLRenderingContext::TexSubImage2D(napi_env env,
       ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
     }
     GLsizei byte_length = 0;
-    nstatus = GetArrayLikeBufferView(env, args[8], src_offset, false, 0,
+    nstatus = GetArrayLikeBufferView(env, source, src_offset, false, 0,
                                      "srcData", &alb, &data, &byte_length);
     ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
     source_byte_count = static_cast<size_t>(byte_length);

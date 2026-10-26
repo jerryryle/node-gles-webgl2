@@ -1355,6 +1355,47 @@ function testTexStorage2DAndMultiPixelReadback(gl) {
   assertNoError(gl, "texStorage2D multi-pixel readback");
 }
 
+function testTexSubImage2DShortForm(gl) {
+  // The seven-argument form with an image-shaped source, as three.js calls it
+  // after texStorage2D.
+  const width = 2;
+  const height = 2;
+  const image = {
+    width,
+    height,
+    data: new Uint8ClampedArray([
+      255, 0, 0, 255, 0, 255, 0, 255,
+      0, 0, 255, 255, 255, 255, 0, 255
+    ])
+  };
+
+  const texture = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  configureTexture(gl, gl.TEXTURE_2D);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, gl.RGBA8, width, height);
+  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  assertNoError(gl, "texSubImage2D short form");
+
+  const framebuffer = gl.createFramebuffer();
+  gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+  gl.framebufferTexture2D(
+      gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+  const readback = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, readback);
+  assertPixelBlockNear(
+      readback, new Uint8Array(image.data), "texSubImage2D short form readback");
+
+  assert.throws(
+      () => gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE),
+      /expects 7, 9, or 10 arguments/);
+
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindTexture(gl.TEXTURE_2D, null);
+  gl.deleteFramebuffer(framebuffer);
+  gl.deleteTexture(texture);
+  assertNoError(gl, "texSubImage2D short form cleanup");
+}
+
 function testUnsignedIntegerUniforms(gl) {
   const program = createProgramFromSources(gl, `#version 300 es
 void main() {
@@ -3427,6 +3468,7 @@ testTypedArrayTextureUploadOffsets(gl);
 testPixelBufferObjectNumericOffsets(gl);
 testMultisampleFramebufferOperations(gl);
 testTexStorage2DAndMultiPixelReadback(gl);
+testTexSubImage2DShortForm(gl);
 testUnsignedIntegerUniforms(gl);
 testUniformValueConversion(gl);
 testUniformLocationProgramValidation(gl);
