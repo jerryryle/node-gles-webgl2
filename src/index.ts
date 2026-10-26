@@ -20,6 +20,7 @@ import bindings = require('bindings');
 import {NodeJsGlBinding} from './binding';
 import {useBufferOffsets} from './buffers';
 import {useWebGLObjects} from './objects';
+import {useUniformOffsets} from './uniforms';
 
 const binding = bindings('nodejs_gl_binding') as NodeJsGlBinding;
 
@@ -58,6 +59,7 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
     );
     useWebGLObjects(gl);
     useBufferOffsets(gl);
+    useUniformOffsets(gl);
     return gl;
 
 
