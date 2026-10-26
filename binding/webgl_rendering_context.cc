@@ -12271,11 +12271,11 @@ napi_value WebGLRenderingContext::VertexAttrib3f(napi_env env,
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   double v1;
-  nstatus = napi_get_value_double(env, args[1], &v1);
+  nstatus = napi_get_value_double(env, args[2], &v1);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   double v2;
-  nstatus = napi_get_value_double(env, args[1], &v2);
+  nstatus = napi_get_value_double(env, args[3], &v2);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   WebGLRenderingContext *context = nullptr;
@@ -12354,15 +12354,15 @@ napi_value WebGLRenderingContext::VertexAttrib4f(napi_env env,
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   double v1;
-  nstatus = napi_get_value_double(env, args[1], &v1);
+  nstatus = napi_get_value_double(env, args[2], &v1);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   double v2;
-  nstatus = napi_get_value_double(env, args[1], &v2);
+  nstatus = napi_get_value_double(env, args[3], &v2);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   double v3;
-  nstatus = napi_get_value_double(env, args[1], &v3);
+  nstatus = napi_get_value_double(env, args[4], &v3);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
   WebGLRenderingContext *context = nullptr;
