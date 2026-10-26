@@ -1043,8 +1043,16 @@ WebGLDepthTextureExtension::WebGLDepthTextureExtension(napi_env env)
 /* static */
 bool WebGLDepthTextureExtension::IsSupported(
     EGLContextWrapper* egl_context_wrapper) {
-  IS_EXTENSION_NAME_AVAILABLE("GL_OES_packed_depth_stencil");
-  IS_EXTENSION_NAME_AVAILABLE("GL_ANGLE_depth_texture");
+  // This feature (depth textures) depends on two other features, so we check
+  // that both are present. The usual shortcut, IS_EXTENSION_NAME_AVAILABLE,
+  // stops after its first check, so it can't be used to check two things.
+  //
+  // WebGL 2 has depth textures built in, so a WebGL 2 context doesn't list
+  // the second feature, and this one is reported as unavailable there. Web
+  // browsers do the same.
+  return IsExtensionAvailable(egl_context_wrapper,
+                              "GL_OES_packed_depth_stencil") &&
+         IsExtensionAvailable(egl_context_wrapper, "GL_ANGLE_depth_texture");
 }
 
 /* static */
@@ -1076,7 +1084,15 @@ napi_status WebGLDepthTextureExtension::NewInstance(
   napi_status nstatus = NewInstanceBase(env, constructor_ref_, instance);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nstatus);
 
-  egl_context_wrapper->glRequestExtensionANGLE("GL_ANGLE_depth_texture");
+  // Before this feature can be used, we ask the graphics library to switch on
+  // the feature it depends on. On some contexts that one is already on, and
+  // asking again counts as a mistake. The program would then be told about an
+  // error it never made. So we only ask when the library says the feature is
+  // one we're allowed to switch on.
+  if (egl_context_wrapper->angle_requestable_extensions->HasExtension(
+          "GL_ANGLE_depth_texture")) {
+    egl_context_wrapper->glRequestExtensionANGLE("GL_ANGLE_depth_texture");
+  }
   egl_context_wrapper->RefreshGLExtensions();
 
   return napi_ok;
