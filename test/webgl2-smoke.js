@@ -133,7 +133,8 @@ function assertNumberNear(actual, expected, label, tolerance = 1e-6) {
 }
 
 function assertArrayNear(actual, expected, label, tolerance = 1e-6) {
-  assert(Array.isArray(actual), `${label}: expected array, got ${actual}`);
+  assert(Array.isArray(actual) || ArrayBuffer.isView(actual),
+      `${label}: expected array, got ${actual}`);
   assert.strictEqual(
       actual.length, expected.length,
       `${label}: expected length ${expected.length}, got ${actual.length}`);
@@ -734,14 +735,14 @@ function testUnsupportedExtensionDoesNotWriteStderr() {
 
 function testGetParameterSemantics(gl) {
   const viewport = gl.getParameter(gl.VIEWPORT);
-  assert.deepStrictEqual(viewport, [0, 0, 16, 16]);
+  assert.deepStrictEqual(viewport, new Int32Array([0, 0, 16, 16]));
   const scissor = gl.getParameter(gl.SCISSOR_BOX);
-  assert.deepStrictEqual(scissor, [0, 0, 16, 16]);
+  assert.deepStrictEqual(scissor, new Int32Array([0, 0, 16, 16]));
   assert.strictEqual(gl.getError(), gl.NO_ERROR);
 
-  assert.deepStrictEqual(gl.getParameter(gl.COLOR_CLEAR_VALUE), [0, 0, 0, 0]);
-  assert.deepStrictEqual(gl.getParameter(gl.BLEND_COLOR), [0, 0, 0, 0]);
-  assert.deepStrictEqual(gl.getParameter(gl.DEPTH_RANGE), [0, 1]);
+  assert.deepStrictEqual(gl.getParameter(gl.COLOR_CLEAR_VALUE), new Float32Array([0, 0, 0, 0]));
+  assert.deepStrictEqual(gl.getParameter(gl.BLEND_COLOR), new Float32Array([0, 0, 0, 0]));
+  assert.deepStrictEqual(gl.getParameter(gl.DEPTH_RANGE), new Float32Array([0, 1]));
   gl.clearColor(0.125, 0.25, 0.5, 0.875);
   assertArrayNear(
       gl.getParameter(gl.COLOR_CLEAR_VALUE), [0.125, 0.25, 0.5, 0.875],
@@ -756,7 +757,7 @@ function testGetParameterSemantics(gl) {
       "mutated DEPTH_RANGE");
 
   const lineWidthRange = gl.getParameter(gl.ALIASED_LINE_WIDTH_RANGE);
-  assert(Array.isArray(lineWidthRange));
+  assert(lineWidthRange instanceof Float32Array);
   const defaultLineWidth = gl.getParameter(gl.LINE_WIDTH);
   assert.strictEqual(typeof defaultLineWidth, "number");
   let testLineWidth = null;
@@ -781,7 +782,7 @@ function testGetParameterSemantics(gl) {
   assert.deepStrictEqual(gl.getParameter(gl.COLOR_WRITEMASK),
                          [true, true, true, true]);
   assert.strictEqual(typeof gl.getParameter(gl.DEPTH_WRITEMASK), "boolean");
-  assert(Array.isArray(gl.getParameter(gl.COMPRESSED_TEXTURE_FORMATS)));
+  assert(gl.getParameter(gl.COMPRESSED_TEXTURE_FORMATS) instanceof Uint32Array);
 
   assert.strictEqual(gl.getParameter(gl.ARRAY_BUFFER_BINDING), null);
   assert.strictEqual(gl.getParameter(gl.CURRENT_PROGRAM), null);
@@ -2119,8 +2120,10 @@ function testLoseContextApi() {
   });
   assert.doesNotThrow(() => ext.loseContext());
   assert.strictEqual(gl.isContextLost(), true, "isContextLost should be true after loseContext");
-  assert.throws(() => gl.clear(gl.COLOR_BUFFER_BIT), /destroyed/,
-                "GL call after loseContext should throw");
+  // As in a browser, a call on a lost context does nothing and getError reports the loss once.
+  assert.doesNotThrow(() => gl.clear(gl.COLOR_BUFFER_BIT),
+                      "GL call after loseContext should do nothing");
+  assert.strictEqual(gl.getError(), gl.CONTEXT_LOST_WEBGL);
   // Second call should be a no-op.
   assert.doesNotThrow(() => ext.loseContext());
 }

@@ -25,6 +25,11 @@
 //
 // This module turns the slice into a view of just those elements before the native call. The
 // native code already uploads a view from wherever it starts.
+//
+// A browser also accepts raw binary data, an ArrayBuffer or a DataView, wherever these calls
+// take an array, while the native binding throws "Invalid napi_status: UNKNOWN". This module
+// hands the native code a byte array over the same memory instead, and turns a null source
+// into the INVALID_VALUE error a browser reports.
 
 import {raiseError, replace} from './wrap';
 
@@ -40,17 +45,28 @@ function slice(data: any, srcOffset: any, length: any): any {
   return data.subarray(start, count ? start + count : data.length);
 }
 
+/** Raw binary data as a byte array over the same memory: an ArrayBuffer or a DataView. Any other
+ *  value comes back unchanged. */
+function asBytes(data: any): any {
+  if (data instanceof ArrayBuffer) return new Uint8Array(data);
+  if (data instanceof DataView) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+  return data;
+}
+
 /** A typed array, the only kind of source these forms accept an offset into. */
 function isTypedArray(value: any): boolean {
   return ArrayBuffer.isView(value) && !(value instanceof DataView);
 }
 
-/** Make `gl` honour bufferData's and bufferSubData's `srcOffset` and `length`. Returns `gl`. */
+/** Make `gl` honour bufferData's and bufferSubData's `srcOffset` and `length`, and accept the
+ *  raw binary sources a browser accepts. Returns `gl`. */
 export function useBufferOffsets<T>(gl: T): T {
   const context = gl as any;
 
   replace(context, 'bufferData', (original) => function(
       target: number, data: any, usage: number, srcOffset?: number, length?: number) {
+    if (data === null) return raiseError(context, context.INVALID_VALUE);
+    data = asBytes(data);
     if (arguments.length <= 3 || !isTypedArray(data)) return original(target, data, usage);
     const part = slice(data, srcOffset, length);
     if (part === null) return raiseError(context, context.INVALID_VALUE);
@@ -59,10 +75,21 @@ export function useBufferOffsets<T>(gl: T): T {
 
   replace(context, 'bufferSubData', (original) => function(
       target: number, dstByteOffset: number, data: any, srcOffset?: number, length?: number) {
+    if (data === null) return raiseError(context, context.INVALID_VALUE);
+    data = asBytes(data);
     if (arguments.length <= 3 || !isTypedArray(data)) return original(target, dstByteOffset, data);
     const part = slice(data, srcOffset, length);
     if (part === null) return raiseError(context, context.INVALID_VALUE);
     return original(target, dstByteOffset, part);
+  });
+
+  // Reading back into a DataView reads into the same memory through a byte array. Its offset and
+  // length then count bytes, which is what they count for a DataView.
+  replace(context, 'getBufferSubData', (original) => function(
+      target: number, srcByteOffset: number, destination: any) {
+    const args = Array.prototype.slice.call(arguments);
+    args[2] = destination instanceof DataView ? asBytes(destination) : destination;
+    return original.apply(null, args);
   });
 
   return gl;

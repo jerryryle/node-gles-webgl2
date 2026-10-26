@@ -317,6 +317,15 @@ bool EGLContextWrapper::InitEGL(napi_env env,
     context_attributes.push_back(EGL_TRUE);
   }
 
+  // A browser fills every new buffer and texture with zeros, so a program never reads memory it
+  // did not write, such as what a buffer held before it was resized. ANGLE does the same when
+  // asked to, on a display that supports it, and a context that behaves like a browser asks.
+  if (context_options.webgl_compatibility &&
+      egl_extensions->HasExtension("EGL_ANGLE_robust_resource_initialization")) {
+    context_attributes.push_back(EGL_ROBUST_RESOURCE_INITIALIZATION_ANGLE);
+    context_attributes.push_back(EGL_TRUE);
+  }
+
   // ANGLE is the graphics library that does the actual drawing. It can check
   // every drawing command and flag the ones that are used wrongly, much as a
   // spell checker flags typos. By default we switch that checking off,
