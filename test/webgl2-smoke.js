@@ -2120,8 +2120,10 @@ function testLoseContextApi() {
   });
   assert.doesNotThrow(() => ext.loseContext());
   assert.strictEqual(gl.isContextLost(), true, "isContextLost should be true after loseContext");
-  assert.throws(() => gl.clear(gl.COLOR_BUFFER_BIT), /destroyed/,
-                "GL call after loseContext should throw");
+  // As in a browser, a call on a lost context does nothing and getError reports the loss once.
+  assert.doesNotThrow(() => gl.clear(gl.COLOR_BUFFER_BIT),
+                      "GL call after loseContext should do nothing");
+  assert.strictEqual(gl.getError(), gl.CONTEXT_LOST_WEBGL);
   // Second call should be a no-op.
   assert.doesNotThrow(() => ext.loseContext());
 }
