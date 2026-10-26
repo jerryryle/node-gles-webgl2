@@ -783,10 +783,10 @@ function testGetParameterSemantics(gl) {
   assert.strictEqual(typeof gl.getParameter(gl.DEPTH_WRITEMASK), "boolean");
   assert(Array.isArray(gl.getParameter(gl.COMPRESSED_TEXTURE_FORMATS)));
 
-  assert.strictEqual(gl.getParameter(gl.ARRAY_BUFFER_BINDING), 0);
-  assert.strictEqual(gl.getParameter(gl.CURRENT_PROGRAM), 0);
-  assert.strictEqual(gl.getParameter(gl.VERTEX_ARRAY_BINDING), 0);
-  assert.strictEqual(gl.getParameter(gl.SAMPLER_BINDING), 0);
+  assert.strictEqual(gl.getParameter(gl.ARRAY_BUFFER_BINDING), null);
+  assert.strictEqual(gl.getParameter(gl.CURRENT_PROGRAM), null);
+  assert.strictEqual(gl.getParameter(gl.VERTEX_ARRAY_BINDING), null);
+  assert.strictEqual(gl.getParameter(gl.SAMPLER_BINDING), null);
   assert(Number.isInteger(gl.getParameter(gl.MAX_3D_TEXTURE_SIZE)));
   assert(Number.isInteger(gl.getParameter(gl.MAX_ARRAY_TEXTURE_LAYERS)));
   assert(Number.isInteger(gl.getParameter(gl.MAX_TEXTURE_SIZE)));
@@ -1797,7 +1797,7 @@ void main() {
 
   gl.bindBufferBase(gl.UNIFORM_BUFFER, bindingPoint, null);
   assert.strictEqual(
-      gl.getIndexedParameter(gl.UNIFORM_BUFFER_BINDING, bindingPoint), 0);
+      gl.getIndexedParameter(gl.UNIFORM_BUFFER_BINDING, bindingPoint), null);
   gl.bindBuffer(gl.UNIFORM_BUFFER, null);
   gl.deleteBuffer(buffer);
   gl.deleteProgram(program);
@@ -3377,7 +3377,7 @@ function testVertexArrayState(gl) {
   gl.enableVertexAttribArray(0);
   assert.strictEqual(gl.getParameter(gl.VERTEX_ARRAY_BINDING), vao);
   gl.bindVertexArray(null);
-  assert.strictEqual(gl.getParameter(gl.VERTEX_ARRAY_BINDING), 0);
+  assert.strictEqual(gl.getParameter(gl.VERTEX_ARRAY_BINDING), null);
   gl.bindVertexArray(vao);
   gl.deleteVertexArray(vao);
   assertNoError(gl, "VAO state smoke");

@@ -50,6 +50,7 @@
     "test/three-smoke.js",
     "test/twgl-smoke.js",
     "test/visual-3d-texture-arrays.js",
+    "test/webgl-objects-smoke.js",
     "test/webgl2-smoke.js",
     "LICENSE",
     "README.md"
@@ -61,12 +62,13 @@
     "format": "clang-format -i -style=Google binding/*.cc binding/*.h",
     "install": "node scripts/install.js",
     "prepare": "npm run build",
-    "test": "npm run test:webgl2 && npm run test:regl",
+    "test": "npm run test:webgl2 && npm run test:objects && npm run test:regl",
     "test:regl": "node test/regl-smoke.js",
     "test:swiftshader": "node test/swiftshader-smoke.js",
     "test:three": "node test/three-smoke.js",
     "test:twgl": "node test/twgl-smoke.js",
     "visual:3d-textures": "node test/visual-3d-texture-arrays.js",
+    "test:objects": "node test/webgl-objects-smoke.js",
     "test:webgl2": "node test/webgl2-smoke.js"
   },
   "devDependencies": {
