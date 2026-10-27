@@ -113,6 +113,25 @@ void ReleaseEGLDisplay(EGLDisplay display) {
 
 }  // namespace
 
+size_t ChooseConfigIndex(const std::vector<ConfigTraits>& configs,
+                         bool antialias, bool es3) {
+  auto find = [&](EGLint samples) -> long {
+    for (size_t i = 0; i < configs.size(); ++i) {
+      const ConfigTraits& c = configs[i];
+      if (c.red_size == 8 && c.green_size == 8 && c.blue_size == 8 &&
+          c.alpha_size == 8 && c.depth_size == 24 && c.stencil_size == 8 &&
+          c.samples == samples &&
+          (!es3 || (c.renderable_type & EGL_OPENGL_ES3_BIT) != 0)) {
+        return static_cast<long>(i);
+      }
+    }
+    return -1;
+  };
+  long index = antialias ? find(4) : -1;
+  if (index < 0) index = find(0);
+  return index < 0 ? 0 : static_cast<size_t>(index);
+}
+
 EGLContextWrapper::EGLContextWrapper(napi_env env,
                                      const GLContextOptions& context_options)
     : context(EGL_NO_CONTEXT),
@@ -122,6 +141,7 @@ EGLContextWrapper::EGLContextWrapper(napi_env env,
       drawing_buffer_width(0),
       drawing_buffer_height(0),
       drawing_buffer_format(GL_RGBA8),
+      antialias(false),
       client_major_es_version(0),
       client_minor_es_version(0),
       initialized_(false),
@@ -274,11 +294,44 @@ bool EGLContextWrapper::InitEGL(napi_env env,
                           EGL_STENCIL_SIZE, 8,
                           EGL_NONE};
 
-  EGLint num_config;
-  if (!eglChooseConfig(display, attrib_list, &config, 1, &num_config)) {
+  // The sizes above are minimums, so the list holds every config at least that
+  // deep; ChooseConfigIndex picks the one with exactly a browser's sizes.
+  EGLint num_config = 0;
+  if (!eglChooseConfig(display, attrib_list, nullptr, 0, &num_config) ||
+      num_config < 1) {
     NAPI_THROW_ERROR(env, "Failed creating a config");
     return false;
   }
+  std::vector<EGLConfig> configs(static_cast<size_t>(num_config));
+  if (!eglChooseConfig(display, attrib_list, configs.data(), num_config,
+                       &num_config) ||
+      num_config < 1) {
+    NAPI_THROW_ERROR(env, "Failed creating a config");
+    return false;
+  }
+  configs.resize(static_cast<size_t>(num_config));
+  std::vector<ConfigTraits> traits(configs.size());
+  for (size_t i = 0; i < configs.size(); ++i) {
+    eglGetConfigAttrib(display, configs[i], EGL_RED_SIZE, &traits[i].red_size);
+    eglGetConfigAttrib(display, configs[i], EGL_GREEN_SIZE,
+                       &traits[i].green_size);
+    eglGetConfigAttrib(display, configs[i], EGL_BLUE_SIZE,
+                       &traits[i].blue_size);
+    eglGetConfigAttrib(display, configs[i], EGL_ALPHA_SIZE,
+                       &traits[i].alpha_size);
+    eglGetConfigAttrib(display, configs[i], EGL_DEPTH_SIZE,
+                       &traits[i].depth_size);
+    eglGetConfigAttrib(display, configs[i], EGL_STENCIL_SIZE,
+                       &traits[i].stencil_size);
+    eglGetConfigAttrib(display, configs[i], EGL_SAMPLES, &traits[i].samples);
+    eglGetConfigAttrib(display, configs[i], EGL_RENDERABLE_TYPE,
+                       &traits[i].renderable_type);
+  }
+  const size_t chosen = ChooseConfigIndex(
+      traits, context_options.antialias,
+      context_options.client_major_es_version >= 3);
+  config = configs[chosen];
+  antialias = traits[chosen].samples > 0;
 
   eglBindAPI(EGL_OPENGL_ES_API);
   if (eglGetError() != EGL_SUCCESS) {

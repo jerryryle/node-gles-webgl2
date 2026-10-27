@@ -336,6 +336,7 @@ export interface NodeJsGlBinding {
     client_minor_es_version: number,
     webgl_compatibility: boolean,
     enabled_extensions?: string[],
-    disabled_extensions?: string[]
+    disabled_extensions?: string[],
+    antialias?: boolean
     ): WebGLRenderingContext | NodeGlesWebGL2RenderingContext;
 }

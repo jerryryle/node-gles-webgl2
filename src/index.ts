@@ -37,6 +37,9 @@ interface ContextArguments {
     minorVersion?: number,
     enabledExtensions?: WebGLExtensionName[],
     disabledExtensions?: WebGLExtensionName[],
+    // Whether the drawing buffer is multisampled, where the display offers a
+    // config for it. getContextAttributes().antialias says which it got.
+    antialias?: boolean,
 };
 
 const createWebGLRenderingContext = function(args: ContextArguments = {}) {
@@ -48,6 +51,7 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
     const minorVersion =  args.minorVersion || 0;
     const enabledExtensions = args.enabledExtensions;
     const disabledExtensions = args.disabledExtensions;
+    const antialias = args.antialias === true;
     // The native context differs from a browser's in a few ways. Each wrapper below makes one
     // of them behave as a browser's does, and its module's opening comment says which.
     const gl = binding.createWebGLRenderingContext(
@@ -58,6 +62,7 @@ const createWebGLRenderingContext = function(args: ContextArguments = {}) {
         webGLCompatibility,
         enabledExtensions,
         disabledExtensions,
+        antialias,
     );
     useWebGLObjects(gl);
     useBufferOffsets(gl);
