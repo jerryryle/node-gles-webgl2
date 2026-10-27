@@ -45,7 +45,37 @@ struct GLContextOptions {
   bool has_enabled_extensions_filter = false;
   std::vector<std::string> enabled_extensions;
   std::vector<std::string> disabled_extensions;
+  // Whether the drawing buffer should be antialiased (multisampled), as a
+  // browser's getContext attribute of the same name asks.
+  bool antialias = false;
 };
+
+// What the drawing buffer's config choice reads from one EGL config.
+struct ConfigTraits {
+  EGLint red_size = 0;
+  EGLint green_size = 0;
+  EGLint blue_size = 0;
+  EGLint alpha_size = 0;
+  EGLint depth_size = 0;
+  EGLint stencil_size = 0;
+  EGLint samples = 0;
+  EGLint renderable_type = 0;
+};
+
+// Picks the drawing buffer's config from the list eglChooseConfig returned and
+// gives its index in that list.
+//
+// In plain terms: a browser's drawing buffer has 8 bits for each of red,
+// green, blue and alpha, 24 bits of depth and 8 of stencil, and 4 samples
+// when it is antialiased. EGL lists the deepest configs first, so the first
+// config can have 16 bits a channel. This looks for the config with exactly
+// those sizes, with 4 samples when antialiasing is asked for and none
+// otherwise. With antialiasing asked for and no such config, it takes the
+// same sizes with no samples. When neither exists, it takes the first config,
+// which is what the binding took before it chose by size. When `es3` is true,
+// a config must also support OpenGL ES 3 to count as a match.
+size_t ChooseConfigIndex(const std::vector<ConfigTraits>& configs,
+                         bool antialias, bool es3);
 
 // Provides lookup of EGL/GL extensions.
 class GLExtensionsWrapper {
@@ -112,6 +142,8 @@ class EGLContextWrapper {
   uint32_t drawing_buffer_width;
   uint32_t drawing_buffer_height;
   GLenum drawing_buffer_format;
+  // Whether the chosen config is multisampled.
+  bool antialias;
   uint32_t client_major_es_version;
   uint32_t client_minor_es_version;
 

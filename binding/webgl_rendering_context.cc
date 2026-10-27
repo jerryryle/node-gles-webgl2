@@ -3423,13 +3423,13 @@ napi_status WebGLRenderingContext::NewInstance(napi_env env,
   nstatus = napi_get_reference_value(env, constructor_ref_, &ctor_value);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nstatus);
 
-  size_t argc = 7;
-  napi_value args[7];
+  size_t argc = 8;
+  napi_value args[8];
   napi_value js_this;
   nstatus = napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nstatus);
   ENSURE_ARGC_RETVAL(env, argc, 5, nstatus);
-  argc = std::min(argc, static_cast<size_t>(7));
+  argc = std::min(argc, static_cast<size_t>(8));
 
   nstatus = napi_new_instance(env, ctor_value, argc, args, instance);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nstatus);
@@ -3444,8 +3444,8 @@ napi_value WebGLRenderingContext::InitInternal(napi_env env,
 
   ENSURE_CONSTRUCTOR_CALL_RETVAL(env, info, nullptr);
 
-  size_t argc = 7;
-  napi_value args[7];
+  size_t argc = 8;
+  napi_value args[8];
   napi_value js_this;
   nstatus = napi_get_cb_info(env, info, &argc, args, &js_this, nullptr);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
@@ -3482,6 +3482,16 @@ napi_value WebGLRenderingContext::InitInternal(napi_env env,
     nstatus = GetOptionalStringArrayParam(env, args[6], "disabledExtensions",
                                           &opts.disabled_extensions);
     ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+  }
+
+  if (argc > 7) {
+    napi_valuetype value_type;
+    nstatus = napi_typeof(env, args[7], &value_type);
+    ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    if (value_type == napi_boolean) {
+      nstatus = napi_get_value_bool(env, args[7], &opts.antialias);
+      ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+    }
   }
 
   WebGLRenderingContext *context =
@@ -7963,6 +7973,10 @@ napi_value WebGLRenderingContext::GetContextAttributes(
 
   napi_status nstatus;
 
+  WebGLRenderingContext *context = nullptr;
+  nstatus = GetContext(env, info, &context);
+  ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
+
   napi_value context_attr_value;
   nstatus = napi_create_object(env, &context_attr_value);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
@@ -7975,8 +7989,11 @@ napi_value WebGLRenderingContext::GetContextAttributes(
       napi_set_named_property(env, context_attr_value, "alpha", alpha_value);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
 
+  // Whether the config the drawing buffer was made from is multisampled.
+  const bool antialias = context->eglContextWrapper_ != nullptr &&
+                         context->eglContextWrapper_->antialias;
   napi_value antialias_value;
-  nstatus = napi_get_boolean(env, true, &antialias_value);
+  nstatus = napi_get_boolean(env, antialias, &antialias_value);
   ENSURE_NAPI_OK_RETVAL(env, nstatus, nullptr);
   nstatus = napi_set_named_property(env, context_attr_value, "antialias",
                                     antialias_value);
